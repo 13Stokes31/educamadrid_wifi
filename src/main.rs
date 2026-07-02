@@ -1,7 +1,12 @@
 use eframe::egui;
-use std::process::Command;
+use std::collections::HashMap;
 use std::sync::mpsc::{self, Receiver};
 use std::thread;
+use std::time::Duration;
+use zbus::blocking::Connection;
+use zbus::zvariant::{ObjectPath, OwnedObjectPath, OwnedValue, Value};
+
+const NM: &str = "org.freedesktop.NetworkManager";
 
 fn main() -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions {
@@ -51,16 +56,16 @@ impl Default for WeduApp {
 impl eframe::App for WeduApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Escuchar el hilo de conexión
-        if let Some(rx) = &self.receiver {
-            if let Ok(result) = rx.try_recv() {
-                self.is_connecting = false;
-                self.last_success = Some(result.is_ok());
-                self.status_msg = match result {
-                    Ok(msg) => msg,
-                    Err(msg) => msg,
-                };
-                self.receiver = None;
-            }
+        if let Some(rx) = &self.receiver
+            && let Ok(result) = rx.try_recv()
+        {
+            self.is_connecting = false;
+            self.last_success = Some(result.is_ok());
+            self.status_msg = match result {
+                Ok(msg) => msg,
+                Err(msg) => msg,
+            };
+            self.receiver = None;
         }
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -177,41 +182,172 @@ impl eframe::App for WeduApp {
     }
 }
 
+// Crea (o recrea) el perfil WEDU_PROF y lo activa, hablando con NetworkManager
+// por D-Bus. Frente a `nmcli`, la contraseña viaja DENTRO de la llamada D-Bus y
+// nunca aparece en la línea de comandos (`ps`/`/proc/<pid>/cmdline`).
 fn connect_to_wedu(username: &str, password: &str) -> Result<String, String> {
     let ssid = "WEDU_PROF";
 
-    // Intentar borrar perfil previo
-    let _ = Command::new("nmcli").args(["connection", "delete", ssid]).output();
+    let conn = Connection::system()
+        .map_err(|e| format!("❌ No se pudo hablar con el sistema (D-Bus): {e}"))?;
 
-    // Crear perfil TTLS / PAP
-    let add_status = Command::new("nmcli")
-    .args([
-        "connection", "add",
-        "type", "wifi",
-        "con-name", ssid,
-        "ifname", "*",
-        "ssid", ssid,
-        "wifi-sec.key-mgmt", "wpa-eap",
-        "802-1x.eap", "ttls",
-        "802-1x.phase2-auth", "pap",
-        "802-1x.identity", username,
-        "802-1x.password", password,
-    ])
-    .output();
+    // Borrar perfiles WEDU_PROF previos (mejor esfuerzo, como el `delete` de antes)
+    borrar_perfiles(&conn, ssid);
 
-    match add_status {
-        Ok(output) if !output.status.success() => {
-            return Err("❌ Error: No se pudo configurar el perfil.".to_string());
+    // Construir el perfil de conexión: a{sa{sv}} (secciones → clave → valor).
+    let mut perfil: HashMap<&str, HashMap<&str, Value>> = HashMap::new();
+
+    let mut s_con = HashMap::new();
+    s_con.insert("id", Value::from(ssid));
+    s_con.insert("type", Value::from("802-11-wireless"));
+    perfil.insert("connection", s_con);
+
+    let mut s_wifi = HashMap::new();
+    s_wifi.insert("ssid", Value::from(ssid.as_bytes().to_vec())); // ssid es 'ay' (bytes)
+    s_wifi.insert("mode", Value::from("infrastructure"));
+    s_wifi.insert("security", Value::from("802-11-wireless-security"));
+    perfil.insert("802-11-wireless", s_wifi);
+
+    let mut s_sec = HashMap::new();
+    s_sec.insert("key-mgmt", Value::from("wpa-eap"));
+    perfil.insert("802-11-wireless-security", s_sec);
+
+    let mut s_eap = HashMap::new();
+    s_eap.insert("eap", Value::from(vec!["ttls"]));
+    s_eap.insert("phase2-auth", Value::from("pap"));
+    s_eap.insert("identity", Value::from(username));
+    s_eap.insert("password", Value::from(password));
+    perfil.insert("802-1x", s_eap);
+
+    let mut s_ipv4 = HashMap::new();
+    s_ipv4.insert("method", Value::from("auto"));
+    perfil.insert("ipv4", s_ipv4);
+
+    let mut s_ipv6 = HashMap::new();
+    s_ipv6.insert("method", Value::from("auto"));
+    perfil.insert("ipv6", s_ipv6);
+
+    // Dispositivo Wi-Fi sobre el que activar
+    let dev = wifi_device(&conn)
+        .ok_or_else(|| "❌ No se encontró ninguna tarjeta Wi-Fi.".to_string())?;
+    let raiz = ObjectPath::try_from("/").unwrap();
+
+    // Añadir + activar en una sola llamada (queda guardado para la bandeja de KDE)
+    let reply = conn
+        .call_method(
+            Some(NM),
+            "/org/freedesktop/NetworkManager",
+            Some(NM),
+            "AddAndActivateConnection",
+            &(perfil, &dev, &raiz),
+        )
+        .map_err(|e| format!("❌ No se pudo crear la conexión: {e}"))?;
+    let (_perfil_path, activa): (OwnedObjectPath, OwnedObjectPath) = reply
+        .body()
+        .deserialize()
+        .map_err(|e| format!("❌ Respuesta inesperada de NetworkManager: {e}"))?;
+
+    esperar_activacion(&conn, &activa)
+}
+
+// Borra todos los perfiles guardados cuyo id sea `ssid` (mejor esfuerzo).
+fn borrar_perfiles(conn: &Connection, ssid: &str) {
+    let Ok(reply) = conn.call_method(
+        Some(NM),
+        "/org/freedesktop/NetworkManager/Settings",
+        Some("org.freedesktop.NetworkManager.Settings"),
+        "ListConnections",
+        &(),
+    ) else {
+        return;
+    };
+    let Ok(paths): Result<Vec<OwnedObjectPath>, _> = reply.body().deserialize() else {
+        return;
+    };
+    for p in paths {
+        let Ok(s) = conn.call_method(
+            Some(NM),
+            p.as_str(),
+            Some("org.freedesktop.NetworkManager.Settings.Connection"),
+            "GetSettings",
+            &(),
+        ) else {
+            continue;
+        };
+        let ajustes: HashMap<String, HashMap<String, OwnedValue>> =
+            match s.body().deserialize() {
+                Ok(a) => a,
+                Err(_) => continue,
+            };
+        let id = ajustes
+            .get("connection")
+            .and_then(|c| c.get("id"))
+            .and_then(|v| String::try_from(v.try_clone().ok()?).ok());
+        if id.as_deref() == Some(ssid) {
+            let _ = conn.call_method(
+                Some(NM),
+                p.as_str(),
+                Some("org.freedesktop.NetworkManager.Settings.Connection"),
+                "Delete",
+                &(),
+            );
         }
-        Err(_) => return Err("❌ Error: NetworkManager no responde.".to_string()),
-        _ => {}
     }
+}
 
-    // Activar conexión
-    let up_status = Command::new("nmcli").args(["connection", "up", ssid]).output();
-
-    match up_status {
-        Ok(output) if output.status.success() => Ok("✅ ¡Conectado con éxito!".to_string()),
-        _ => Err("❌ Fallo en la autenticación. Revisa tus datos.".to_string()),
+// Primer dispositivo de tipo Wi-Fi (NM_DEVICE_TYPE_WIFI = 2).
+fn wifi_device(conn: &Connection) -> Option<OwnedObjectPath> {
+    let reply = conn
+        .call_method(Some(NM), "/org/freedesktop/NetworkManager", Some(NM), "GetDevices", &())
+        .ok()?;
+    let devices: Vec<OwnedObjectPath> = reply.body().deserialize().ok()?;
+    for d in devices {
+        let Ok(r) = conn.call_method(
+            Some(NM),
+            d.as_str(),
+            Some("org.freedesktop.DBus.Properties"),
+            "Get",
+            &("org.freedesktop.NetworkManager.Device", "DeviceType"),
+        ) else {
+            continue;
+        };
+        let tipo = r
+            .body()
+            .deserialize::<OwnedValue>()
+            .ok()
+            .and_then(|v| u32::try_from(v).ok())
+            .unwrap_or(0);
+        if tipo == 2 {
+            return Some(d);
+        }
     }
+    None
+}
+
+// Sondea el estado de la conexión activa hasta ~20 s.
+// Estados NMActiveConnectionState: 2 = activada, 4 = desactivada (fallo).
+fn esperar_activacion(conn: &Connection, activa: &OwnedObjectPath) -> Result<String, String> {
+    for i in 0..40 {
+        thread::sleep(Duration::from_millis(500));
+        let estado = conn
+            .call_method(
+                Some(NM),
+                activa.as_str(),
+                Some("org.freedesktop.DBus.Properties"),
+                "Get",
+                &("org.freedesktop.NetworkManager.Connection.Active", "State"),
+            )
+            .ok()
+            .and_then(|m| m.body().deserialize::<OwnedValue>().ok())
+            .and_then(|v| u32::try_from(v).ok());
+        match estado {
+            Some(2) => return Ok("✅ ¡Conectado con éxito!".to_string()),
+            Some(4) => return Err("❌ Fallo en la autenticación o red fuera de alcance.".to_string()),
+            Some(_) => continue, // activándose
+            // La conexión activa desapareció (NM la retira al fallar): también es fallo.
+            None if i > 0 => return Err("❌ Fallo en la autenticación o red fuera de alcance.".to_string()),
+            None => continue,
+        }
+    }
+    Err("❌ La conexión tardó demasiado. Revisa que WEDU_PROF esté al alcance.".to_string())
 }

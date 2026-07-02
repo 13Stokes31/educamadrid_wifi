@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 eframe = "0.27.2" # Framework para la interfaz gráfica egui
+zbus = "4"        # Cliente D-Bus para hablar con NetworkManager (secreto fuera de argv)
