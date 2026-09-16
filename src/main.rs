@@ -23,21 +23,22 @@ const UPDATE2_FLAG_TO_DISK: u32 = 0x1;
 fn main() -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([420.0, 500.0])
+            .with_inner_size([420.0, 470.0])
             .with_resizable(false)
             .with_title("Wi-Fi Educamadrid")
             .with_app_id("educamadrid-wifi"),
-        ..Default::default()
+        ..Default::default() // sigue el tema claro/oscuro del sistema
     };
+
+    // ¿Ya hay un WEDU_PROF usable por este usuario? (consulta rápida a NetworkManager)
+    let perfil_previo = Connection::system()
+        .map(|c| !perfiles_wedu(&c).is_empty())
+        .unwrap_or(false);
 
     eframe::run_native(
         "educamadrid-wifi",
         options,
-        Box::new(|cc| {
-            // Forzar tema claro nada más empezar
-            cc.egui_ctx.set_visuals(egui::Visuals::light());
-            Box::new(WeduApp::default()) as Box<dyn eframe::App>
-        }),
+        Box::new(move |_cc| Box::new(WeduApp::new(perfil_previo)) as Box<dyn eframe::App>),
     )
 }
 
@@ -49,23 +50,25 @@ struct WeduApp {
     is_connecting: bool,
     last_success: Option<bool>,
     receiver: Option<Receiver<Result<String, String>>>,
+    perfil_previo: bool,
+    enfocar_usuario: bool,
 }
 
-impl Default for WeduApp {
-    fn default() -> Self {
+impl WeduApp {
+    fn new(perfil_previo: bool) -> Self {
         Self {
             username: String::new(),
             password: String::new(),
             show_password: false,
-            status_msg: String::from("Introduce tus credenciales para conectar."),
+            status_msg: String::new(),
             is_connecting: false,
             last_success: None,
             receiver: None,
+            perfil_previo,
+            enfocar_usuario: true,
         }
     }
-}
 
-impl WeduApp {
     fn conectar(&mut self, ctx: &egui::Context) {
         self.show_password = false;
         let user = match normalizar_usuario(&self.username) {
@@ -79,7 +82,7 @@ impl WeduApp {
         self.username = user.clone();
         self.is_connecting = true;
         self.last_success = None;
-        self.status_msg = String::from("Conectando con NetworkManager...");
+        self.status_msg = String::from("Conectando con WEDU_PROF...");
 
         let (tx, rx) = mpsc::channel();
         self.receiver = Some(rx);
@@ -105,6 +108,7 @@ impl eframe::App for WeduApp {
             if result.is_ok() {
                 // Ya está guardada en NetworkManager: no hace falta tenerla en pantalla.
                 self.password.clear();
+                self.perfil_previo = true;
             }
             self.status_msg = match result {
                 Ok(msg) => msg,
@@ -114,66 +118,97 @@ impl eframe::App for WeduApp {
         }
 
         egui::CentralPanel::default().show(ctx, |ui| {
+            let oscuro = ui.visuals().dark_mode;
+            let tenue = ui.visuals().weak_text_color();
+            let ancho = 340.0;
+            // En claro, un gris algo más oscuro para que las cajas blancas destaquen.
+            let fondo_tarjeta = if oscuro {
+                ui.visuals().faint_bg_color
+            } else {
+                egui::Color32::from_gray(236)
+            };
+
             ui.vertical_centered(|ui| {
                 ui.add_space(20.0);
-                ui.heading(
-                    egui::RichText::new("Conectividad Educamadrid")
-                        .size(24.0)
-                        .strong(),
-                );
-                ui.label(
-                    egui::RichText::new("Configuración de red WEDU_PROF")
-                        .color(egui::Color32::GRAY),
-                );
-                ui.add_space(20.0);
+                ui.heading(egui::RichText::new("Wi-Fi Educamadrid").size(24.0).strong());
+                ui.label(egui::RichText::new("Red del profesorado WEDU_PROF").color(tenue));
+                ui.add_space(16.0);
 
-                // CONTENEDOR DE FORMULARIO
+                // Aviso de perfil ya configurado
+                if self.perfil_previo && self.last_success.is_none() && !self.is_connecting {
+                    egui::Frame::none()
+                        .fill(fondo_tarjeta)
+                        .rounding(8.0)
+                        .inner_margin(10.0)
+                        .show(ui, |ui| {
+                            ui.set_width(ancho + 20.0); // mismo ancho total que el formulario
+                            ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
+                                ui.label(
+                                egui::RichText::new(
+                                    "Este equipo ya tiene WEDU_PROF configurado y se conecta solo. \
+                                     Vuelve a conectar aquí solo si has cambiado la contraseña: \
+                                     el perfil actual se sustituirá si la nueva funciona.",
+                                )
+                                .size(13.0),
+                            );
+                            });
+                        });
+                    ui.add_space(12.0);
+                }
+
+                // FORMULARIO
                 egui::Frame::none()
-                    .fill(egui::Color32::from_rgb(245, 245, 247))
+                    .fill(fondo_tarjeta)
                     .rounding(12.0)
                     .inner_margin(20.0)
                     .show(ui, |ui| {
-                        ui.set_width(340.0);
-
-                        ui.label(egui::RichText::new("Usuario").strong());
-                        ui.add_space(4.0);
-                        ui.add(
-                            egui::TextEdit::singleline(&mut self.username)
-                                .hint_text("Usuario sin @educa.madrid.org")
-                                .desired_width(f32::INFINITY)
-                                .margin(egui::vec2(8.0, 8.0)),
-                        );
-
-                        ui.add_space(15.0);
-
-                        ui.label(egui::RichText::new("Contraseña").strong());
-                        ui.add_space(4.0);
-                        ui.horizontal(|ui| {
-                            ui.add(
-                                egui::TextEdit::singleline(&mut self.password)
-                                    .password(!self.show_password)
-                                    .hint_text("Tu clave secreta")
-                                    .desired_width(260.0)
+                        ui.set_width(ancho);
+                        ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
+                            ui.label(egui::RichText::new("Usuario").strong());
+                            ui.add_space(4.0);
+                            let usuario = ui.add(
+                                egui::TextEdit::singleline(&mut self.username)
+                                    .hint_text("nombre.apellido (sin @educa.madrid.org)")
+                                    .desired_width(f32::INFINITY)
                                     .margin(egui::vec2(8.0, 8.0)),
                             );
-
-                            if ui
-                                .button(if self.show_password { "👁" } else { "🙈" })
-                                .on_hover_text("Mostrar/Ocultar")
-                                .clicked()
-                            {
-                                self.show_password = !self.show_password;
+                            if self.enfocar_usuario {
+                                usuario.request_focus();
+                                self.enfocar_usuario = false;
                             }
+
+                            ui.add_space(14.0);
+
+                            ui.label(egui::RichText::new("Contraseña").strong());
+                            ui.add_space(4.0);
+                            ui.horizontal(|ui| {
+                                let boton = egui::vec2(72.0, 34.0);
+                                ui.add(
+                                    egui::TextEdit::singleline(&mut self.password)
+                                        .password(!self.show_password)
+                                        .hint_text("Contraseña de EducaMadrid")
+                                        .desired_width(
+                                            ui.available_width()
+                                                - boton.x
+                                                - ui.spacing().item_spacing.x,
+                                        )
+                                        .margin(egui::vec2(8.0, 8.0)),
+                                );
+                                let texto = if self.show_password { "Ocultar" } else { "Ver" };
+                                if ui.add(egui::Button::new(texto).min_size(boton)).clicked() {
+                                    self.show_password = !self.show_password;
+                                }
+                            });
                         });
                     });
 
-                ui.add_space(25.0);
+                ui.add_space(22.0);
 
-                // BOTÓN DE ACCIÓN
+                // BOTÓN DE ACCIÓN (Intro también conecta)
                 let btn_text = if self.is_connecting {
                     "Conectando..."
                 } else {
-                    "CONECTAR AHORA"
+                    "CONECTAR"
                 };
                 let btn_enabled = !self.is_connecting
                     && !self.username.trim().is_empty()
@@ -194,40 +229,44 @@ impl eframe::App for WeduApp {
                     .rounding(25.0);
 
                     ui.add_enabled_ui(btn_enabled, |ui| {
-                        if ui.add(button).clicked() {
+                        let pulsado = ui.add(button).clicked();
+                        let intro = ui.input(|i| i.key_pressed(egui::Key::Enter));
+                        if pulsado || (intro && btn_enabled) {
                             self.conectar(ctx);
                         }
                     });
                 });
 
-                ui.add_space(30.0);
-
-                // TARJETA DE ESTADO
-                let card_color = match self.last_success {
-                    Some(true) => egui::Color32::from_rgb(232, 245, 233), // Verde claro
-                    Some(false) => egui::Color32::from_rgb(255, 235, 238), // Rojo claro
-                    None => egui::Color32::from_rgb(240, 240, 240),       // Gris claro
-                };
-
-                egui::Frame::none()
-                    .fill(card_color)
-                    .rounding(8.0)
-                    .inner_margin(10.0)
-                    .show(ui, |ui| {
-                        ui.set_width(340.0);
-                        ui.horizontal_wrapped(|ui| {
-                            if self.is_connecting {
-                                ui.spinner();
-                            }
-                            ui.label(egui::RichText::new(&self.status_msg).size(13.0));
+                // TARJETA DE ESTADO (solo cuando hay algo que contar)
+                if !self.status_msg.is_empty() {
+                    ui.add_space(22.0);
+                    let card_color = match (self.last_success, oscuro) {
+                        (Some(true), false) => egui::Color32::from_rgb(232, 245, 233),
+                        (Some(true), true) => egui::Color32::from_rgb(30, 60, 36),
+                        (Some(false), false) => egui::Color32::from_rgb(255, 235, 238),
+                        (Some(false), true) => egui::Color32::from_rgb(70, 32, 36),
+                        (None, _) => fondo_tarjeta,
+                    };
+                    egui::Frame::none()
+                        .fill(card_color)
+                        .rounding(8.0)
+                        .inner_margin(10.0)
+                        .show(ui, |ui| {
+                            ui.set_width(ancho + 20.0);
+                            ui.horizontal_wrapped(|ui| {
+                                if self.is_connecting {
+                                    ui.spinner();
+                                }
+                                ui.label(egui::RichText::new(&self.status_msg).size(13.0));
+                            });
                         });
-                    });
+                }
 
-                ui.add_space(20.0);
+                ui.add_space(18.0);
                 ui.label(
                     egui::RichText::new("Herramienta no oficial, sin relación con EducaMadrid.")
                         .size(11.0)
-                        .color(egui::Color32::GRAY),
+                        .color(tenue),
                 );
             });
         });

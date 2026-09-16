@@ -24,7 +24,9 @@ app escribes usuario y contraseña, pulsas un botón y listo.
    - **Si conecta**, lo guarda en disco y borra los perfiles `WEDU_PROF` antiguos.
    - **Si falla**, descarta el perfil nuevo y deja intactos los que ya tuvieras. Muestra el motivo
      que da NetworkManager (contraseña rechazada, red no encontrada, sin IP…).
-4. Tras conectar, vacía el campo de contraseña. Desde entonces el equipo se conecta solo a
+4. Si al abrirla el equipo ya tiene `WEDU_PROF` configurado, lo avisa: solo hace falta volver a
+   conectar si has cambiado la contraseña.
+5. Tras conectar, vacía el campo de contraseña. Desde entonces el equipo se conecta solo a
    `WEDU_PROF` (también desde la bandeja del escritorio), sin abrir la app.
 
 ## Seguridad: léelo antes de usarla
@@ -84,7 +86,7 @@ sudo install -Dm644 educamadrid-wifi.desktop /usr/local/share/applications/educa
 
 1. Ve al centro (la red `WEDU_PROF` tiene que estar al alcance: la app no busca redes).
 2. Abre «Wi-Fi Educamadrid», escribe usuario y contraseña de EducaMadrid y pulsa
-   **CONECTAR AHORA**.
+   **CONECTAR** (o Intro).
 3. Verde = conectado y guardado. Rojo = no se pudo; el mensaje dice por qué y tu configuración
    anterior sigue como estaba.
 
@@ -94,9 +96,10 @@ Un único fichero, `src/main.rs`:
 
 | Función | Qué hace |
 |---|---|
-| `WeduApp` / `update` | Interfaz (egui/eframe). La conexión va en un hilo aparte para no congelar la ventana. |
+| `WeduApp` / `update` | Interfaz (egui/eframe; sigue el tema claro/oscuro del sistema). La conexión va en un hilo aparte para no congelar la ventana. |
 | `normalizar_usuario` | Quita espacios y el `@educa.madrid.org`; rechaza lo que no parezca un usuario. |
 | `perfil` | Construye los ajustes del perfil. **Si EducaMadrid cambia los parámetros de la red, se tocan aquí.** |
+| `perfiles_wedu` | Lista los perfiles `WEDU_PROF` visibles para el usuario (aviso al abrir y limpieza tras conectar). |
 | `connect_to_wedu` | Crea en memoria + activa (`AddAndActivateConnection2`); si conecta, guarda en disco (`Update2`) y borra perfiles viejos. |
 | `wifi_device` | Elige la primera tarjeta Wi-Fi encendida. |
 | `esperar_activacion` / `explicar_motivo` | Sondea el estado y traduce el motivo de fallo de NetworkManager. |

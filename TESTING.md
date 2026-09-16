@@ -10,6 +10,8 @@ comprobarlo.
       nombre, sin activar, borrado después).
 - [x] `makepkg` construye el paquete y pasa `check()`. Instala binario, `.desktop` y licencia.
 - [x] La app arranca sin errores.
+- [x] Interfaz revisada con capturas en tema oscuro y claro: formulario alineado, botón Ver/Ocultar,
+      aviso de perfil existente, tarjetas de error/éxito/conectando (estados forzados en builds temporales).
 
 ## En el centro (red `WEDU_PROF` al alcance)
 
@@ -34,6 +36,13 @@ comprobarlo.
 - [ ] **Wi-Fi apagado:** con el Wi-Fi desactivado → «El Wi-Fi está apagado».
 - [ ] **Lanzador:** tras instalar el paquete, «Wi-Fi Educamadrid» aparece en el menú con icono de
       Wi-Fi y la ventana se agrupa bien en la barra de tareas.
+
+## Interfaz (uso normal)
+
+- [ ] Al abrir, el cursor está en «Usuario» y se puede escribir sin tocar el ratón.
+- [ ] Tab pasa a «Contraseña» e Intro conecta.
+- [ ] Al cambiar el escritorio entre tema claro y oscuro, la app lo sigue (al reabrirla).
+- [ ] En un equipo sin `WEDU_PROF` no aparece el aviso de «ya configurado»; en uno con el perfil, sí.
 
 ## Paquete AUR (tras publicar)
 
