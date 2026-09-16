@@ -23,7 +23,7 @@ const UPDATE2_FLAG_TO_DISK: u32 = 0x1;
 fn main() -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([420.0, 470.0])
+            .with_inner_size([460.0, 540.0])
             .with_resizable(false)
             .with_title("Wi-Fi Educamadrid")
             .with_app_id("educamadrid-wifi"),
@@ -127,6 +127,16 @@ impl eframe::App for WeduApp {
             };
             s.visuals.widgets.noninteractive.fg_stroke.color = texto;
             s.visuals.widgets.inactive.fg_stroke.color = texto;
+            // Letra algo mayor que la de serie (14 px).
+            for (estilo, tam) in [
+                (egui::TextStyle::Body, 16.0),
+                (egui::TextStyle::Button, 16.0),
+                (egui::TextStyle::Small, 13.0),
+            ] {
+                if let Some(fuente) = s.text_styles.get_mut(&estilo) {
+                    fuente.size = tam;
+                }
+            }
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -136,7 +146,7 @@ impl eframe::App for WeduApp {
             } else {
                 egui::Color32::from_gray(85)
             };
-            let ancho = 340.0;
+            let ancho = 380.0;
             // En claro, un gris algo más oscuro para que las cajas blancas destaquen.
             let fondo_tarjeta = if oscuro {
                 ui.visuals().faint_bg_color
@@ -146,7 +156,7 @@ impl eframe::App for WeduApp {
 
             ui.vertical_centered(|ui| {
                 ui.add_space(20.0);
-                ui.heading(egui::RichText::new("Wi-Fi Educamadrid").size(24.0).strong());
+                ui.heading(egui::RichText::new("Wi-Fi Educamadrid").size(28.0).strong());
                 ui.label(egui::RichText::new("Red del profesorado WEDU_PROF").color(tenue));
                 ui.add_space(16.0);
 
@@ -165,7 +175,7 @@ impl eframe::App for WeduApp {
                                      Vuelve a conectar aquí solo si has cambiado la contraseña: \
                                      el perfil actual se sustituirá si la nueva funciona.",
                                 )
-                                .size(13.0),
+                                .size(15.0),
                             );
                             });
                         });
@@ -198,7 +208,7 @@ impl eframe::App for WeduApp {
                             ui.label(egui::RichText::new("Contraseña").strong());
                             ui.add_space(4.0);
                             ui.horizontal(|ui| {
-                                let boton = egui::vec2(72.0, 34.0);
+                                let boton = egui::vec2(40.0, 36.0);
                                 ui.add(
                                     egui::TextEdit::singleline(&mut self.password)
                                         .password(!self.show_password)
@@ -210,8 +220,15 @@ impl eframe::App for WeduApp {
                                         )
                                         .margin(egui::vec2(8.0, 8.0)),
                                 );
-                                let texto = if self.show_password { "Ocultar" } else { "Ver" };
-                                if ui.add(egui::Button::new(texto).min_size(boton)).clicked() {
+                                let ojo = egui::Button::new(egui::RichText::new("👁").size(26.0))
+                                    .min_size(boton)
+                                    .selected(self.show_password); // resaltado = contraseña visible
+                                let ayuda = if self.show_password {
+                                    "Ocultar contraseña"
+                                } else {
+                                    "Mostrar contraseña"
+                                };
+                                if ui.add(ojo).on_hover_text(ayuda).clicked() {
                                     self.show_password = !self.show_password;
                                 }
                             });
@@ -273,7 +290,7 @@ impl eframe::App for WeduApp {
                                 if self.is_connecting {
                                     ui.spinner();
                                 }
-                                ui.label(egui::RichText::new(&self.status_msg).size(13.0));
+                                ui.label(egui::RichText::new(&self.status_msg).size(15.0));
                             });
                         });
                 }
@@ -281,7 +298,7 @@ impl eframe::App for WeduApp {
                 ui.add_space(18.0);
                 ui.label(
                     egui::RichText::new("Herramienta no oficial, sin relación con EducaMadrid.")
-                        .size(11.0)
+                        .size(13.0)
                         .color(tenue),
                 );
             });

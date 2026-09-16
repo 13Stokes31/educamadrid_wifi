@@ -10,7 +10,7 @@ comprobarlo.
       nombre, sin activar, borrado después).
 - [x] `makepkg` construye el paquete y pasa `check()`. Instala binario, `.desktop` y licencia.
 - [x] La app arranca sin errores.
-- [x] Interfaz revisada con capturas en tema oscuro y claro: formulario alineado, botón Ver/Ocultar,
+- [x] Interfaz revisada con capturas en tema oscuro y claro: formulario alineado, botón de ojo para mostrar/ocultar la contraseña, letra mayor y más contraste,
       aviso de perfil existente, tarjetas de error/éxito/conectando (estados forzados en builds temporales).
 
 ## En el centro (red `WEDU_PROF` al alcance)
