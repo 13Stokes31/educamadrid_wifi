@@ -117,9 +117,25 @@ impl eframe::App for WeduApp {
             self.receiver = None;
         }
 
+        // Más contraste que el de serie de egui (texto 140/80 sobre fondo oscuro/claro).
+        // Se aplica en cada frame porque eframe restablece los colores si cambia el tema.
+        ctx.style_mut(|s| {
+            let texto = if s.visuals.dark_mode {
+                egui::Color32::from_gray(225)
+            } else {
+                egui::Color32::from_gray(25)
+            };
+            s.visuals.widgets.noninteractive.fg_stroke.color = texto;
+            s.visuals.widgets.inactive.fg_stroke.color = texto;
+        });
+
         egui::CentralPanel::default().show(ctx, |ui| {
             let oscuro = ui.visuals().dark_mode;
-            let tenue = ui.visuals().weak_text_color();
+            let tenue = if oscuro {
+                egui::Color32::from_gray(175)
+            } else {
+                egui::Color32::from_gray(85)
+            };
             let ancho = 340.0;
             // En claro, un gris algo más oscuro para que las cajas blancas destaquen.
             let fondo_tarjeta = if oscuro {
