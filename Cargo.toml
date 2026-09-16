@@ -1,7 +1,11 @@
 [package]
-name = "educamadrid_wifi"
-version = "0.1.0"
+name = "educamadrid-wifi"
+version = "0.2.0"
 edition = "2024"
+rust-version = "1.88"
+description = "GUI para conectar Linux a la red Wi-Fi WEDU_PROF de EducaMadrid mediante NetworkManager"
+license = "MIT"
+repository = "https://github.com/13Stokes31/educamadrid_wifi"
 
 [dependencies]
 eframe = "0.27.2" # Framework para la interfaz gráfica egui

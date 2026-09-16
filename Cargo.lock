@@ -979,8 +979,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "educamadrid_wifi"
-version = "0.1.0"
+name = "educamadrid-wifi"
+version = "0.2.0"
 dependencies = [
  "eframe",
  "zbus 4.4.0",

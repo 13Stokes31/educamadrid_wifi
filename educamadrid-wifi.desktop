@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Wi-Fi Educamadrid
+GenericName=Conexión a WEDU_PROF
+Comment=Configura la red Wi-Fi WEDU_PROF de EducaMadrid en NetworkManager
+Exec=educamadrid-wifi
+Icon=network-wireless
+Terminal=false
+Categories=Network;
+Keywords=wifi;wedu;wedu_prof;educamadrid;
+StartupWMClass=educamadrid-wifi
