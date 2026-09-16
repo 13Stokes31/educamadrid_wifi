@@ -111,7 +111,7 @@ que habla con la red real se comprueba a mano: ver `TESTING.md`.
 
 1. Subir `version` en `Cargo.toml` y `pkgver` en `packaging/aur/PKGBUILD` (y `pkgrel=1`).
 2. `cargo test && cargo clippy --all-targets -- -D warnings`, commit.
-3. Etiqueta y subida: `git tag vX.Y.Z && git push origin main vX.Y.Z` y crear la *release* en GitHub.
+3. Etiqueta y subida: `git tag vX.Y.Z && git push origin master vX.Y.Z` y crear la *release* en GitHub.
 4. En `packaging/aur/`: `updpkgsums && makepkg -f && makepkg --printsrcinfo > .SRCINFO`.
 5. Copiar `PKGBUILD` y `.SRCINFO` al clon del repo AUR
    (`ssh://aur@aur.archlinux.org/educamadrid-wifi.git`), commit y push. AUR solo acepta la rama
