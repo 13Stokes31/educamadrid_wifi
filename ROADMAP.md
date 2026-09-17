@@ -49,6 +49,6 @@ Origen: auditoría externa del 2026-08-28 (antiguo `CHATGPT.md`) y revisión del
 
 - **Actualizar egui/eframe** (0.27 → actual): cambia la API de la interfaz. Estado: cuando haga falta.
 - **CI en GitHub Actions** con `cargo test` + `cargo clippy -D warnings`. Estado: propuesto.
-- **Publicación en AUR:** GitHub público con tag y release `v0.2.0` (hecho 2026-09-17). El paquete
-  está construido y verificado y el commit inicial está preparado en `~/Proyectos/aur/educamadrid-wifi`
-  (rama `master`). Falta solo `git push` ahí, después de las pruebas en el centro de `TESTING.md`.
+- **Publicado** (2026-09-17): GitHub público con releases `v0.2.0` y `v0.2.1`, y AUR
+  (`educamadrid-wifi` 0.2.1-1). El clon del repo AUR está en `~/Proyectos/aur/educamadrid-wifi`.
+  Para nuevas versiones, ver «Publicar una versión» en el README.
