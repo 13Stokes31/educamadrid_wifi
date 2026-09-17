@@ -15,7 +15,7 @@ comprobarlo.
 
 ## En el centro (red `WEDU_PROF` al alcance)
 
-- [ ] **Conexión buena:** usuario y contraseña correctos → mensaje verde. `nmcli connection show`
+- [x] **Conexión buena** (verificado por el usuario en el centro, 2026-09-17): usuario y contraseña correctos → mensaje verde. `nmcli connection show`
       muestra un solo `WEDU_PROF` y hay navegación.
 - [ ] **Queda guardado:** tras reiniciar el portátil, se conecta solo a `WEDU_PROF` sin abrir la app.
 - [ ] **Correo entero:** escribir `usuario@educa.madrid.org` funciona igual que `usuario`.
