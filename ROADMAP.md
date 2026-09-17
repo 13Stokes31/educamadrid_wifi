@@ -27,8 +27,11 @@ Origen: auditoría externa del 2026-08-28 (antiguo `CHATGPT.md`) y revisión del
     `65125e7e91144342b55e747bca66a5323cead4f21e7220cca0d30bb69413b7cb`
   - Es una CA **privada** de la Comunidad de Madrid: no está en el almacén del sistema y no se
     ha encontrado publicada. El log solo trae huellas, no el certificado en sí.
-- **Estado:** falta conseguir el fichero de la CA raíz (capturándolo en el centro o pidiéndolo
-  a Madrid Digital) para fijarlo en el perfil junto con `domain-suffix-match`.
+- **Estado:** MEJORA OPCIONAL, no urgente (decisión del usuario, 2026-09-17). La conexión funciona
+  sin esto; solo protege frente a un punto de acceso falso. Se retomará si llega a tenerse el
+  fichero de la CA raíz (capturándolo en el centro con la señal D-Bus `Certification` de
+  wpa_supplicant, o pidiéndolo a Madrid Digital) y comprobando que su sha256 coincide con la
+  capturada. No insistir mientras tanto.
 
 ### Contraseña fuera de disco (opcional)
 - **Qué:** hoy NetworkManager guarda la contraseña en `/etc/NetworkManager/system-connections`
