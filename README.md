@@ -52,12 +52,23 @@ leer `root`. A través de NetworkManager también puede leerla el usuario dueño
 
 ### Arch Linux (AUR)
 
+Para la mayoría de usuarios se recomienda el paquete binario, que evita instalar Rust y compilar
+la aplicación localmente:
+
 ```bash
-yay -S educamadrid-wifi      # o paru, o makepkg a mano
+yay -S educamadrid-wifi-bin
 ```
 
-Instala el binario en `/usr/bin/educamadrid-wifi` y un lanzador («Wi-Fi Educamadrid») en el
-menú de aplicaciones.
+También está disponible el paquete que compila la versión estable directamente desde el código
+fuente:
+
+```bash
+yay -S educamadrid-wifi
+```
+
+Ambos instalan la misma aplicación y son incompatibles entre sí, por lo que solo debe instalarse
+uno de ellos. El binario queda en `/usr/bin/educamadrid-wifi` y el lanzador «Wi-Fi Educamadrid»
+aparece en el menú de aplicaciones.
 
 ### Desde el código (cualquier distribución)
 
@@ -109,13 +120,27 @@ que habla con la red real se comprueba a mano: ver `TESTING.md`.
 
 ## Publicar una versión (mantenimiento)
 
-1. Subir `version` en `Cargo.toml` y `pkgver` en `packaging/aur/PKGBUILD` (y `pkgrel=1`).
-2. `cargo test && cargo clippy --all-targets -- -D warnings`, commit.
-3. Etiqueta y subida: `git tag vX.Y.Z && git push origin master vX.Y.Z` y crear la *release* en GitHub.
-4. En `packaging/aur/`: `updpkgsums && makepkg -f && makepkg --printsrcinfo > .SRCINFO`.
-5. Copiar `PKGBUILD` y `.SRCINFO` al clon del repo AUR
-   (`ssh://aur@aur.archlinux.org/educamadrid-wifi.git`), commit y push. AUR solo acepta la rama
+1. Subir `version` en `Cargo.toml` y `pkgver` en `packaging/aur/PKGBUILD` y
+   `packaging/aur-bin/PKGBUILD`; poner `pkgrel=1` en ambos paquetes.
+2. Ejecutar `cargo test && cargo clippy --all-targets -- -D warnings`, hacer commit y subirlo a
    `master`.
+3. Crear y subir la etiqueta: `git tag vX.Y.Z && git push origin master vX.Y.Z`. Crear después
+   la *release* de GitHub para esa etiqueta y publicarla. Al publicarse, GitHub Actions ejecuta
+   de nuevo los tests, compila el binario Linux x86_64 desde esa etiqueta y adjunta a la release
+   `educamadrid-wifi-vX.Y.Z-x86_64-linux-gnu.tar.gz` y su fichero `.sha256`.
+4. Para `educamadrid-wifi`, en `packaging/aur/` ejecutar
+   `updpkgsums && makepkg -f && makepkg --printsrcinfo > .SRCINFO`. Se mantiene `check()` en el
+   `PKGBUILD`, por lo que `makepkg` ejecuta también los tests.
+5. Para `educamadrid-wifi-bin`, copiar el SHA-256 del artefacto publicado en la release al
+   `sha256sums` de `packaging/aur-bin/PKGBUILD` y ejecutar
+   `makepkg -f && makepkg --printsrcinfo > .SRCINFO`.
+6. Copiar `PKGBUILD` y `.SRCINFO` de cada variante a sus respectivos repositorios AUR y hacer
+   commit + push:
+   - `ssh://aur@aur.archlinux.org/educamadrid-wifi.git`
+   - `ssh://aur@aur.archlinux.org/educamadrid-wifi-bin.git`
+
+El workflow también admite ejecución manual indicando una etiqueta ya existente, útil si hubiera
+que regenerar los artefactos de una release sin crear una versión nueva.
 
 ## Documentos del proyecto
 
