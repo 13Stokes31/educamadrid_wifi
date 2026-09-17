@@ -194,7 +194,7 @@ impl eframe::App for WeduApp {
                             ui.add_space(4.0);
                             let usuario = ui.add(
                                 egui::TextEdit::singleline(&mut self.username)
-                                    .hint_text("nombre.apellido (sin @educa.madrid.org)")
+                                    .hint_text("Usuario de Educamadrid (sin @educa.madrid.org)")
                                     .desired_width(f32::INFINITY)
                                     .margin(egui::vec2(8.0, 8.0)),
                             );
