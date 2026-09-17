@@ -13,7 +13,7 @@ depends=('networkmanager' 'gcc-libs' 'glibc' 'libglvnd' 'libx11' 'libxcursor' 'l
 provides=("$_pkgname=$pkgver")
 conflicts=("$_pkgname")
 source=("$pkgname-$pkgver.tar.gz::$url/releases/download/v$pkgver/$_pkgname-v$pkgver-x86_64-linux-gnu.tar.gz")
-sha256sums=('__SHA256__')
+sha256sums=('0470ab789d7ddbbea3e76016a8590218b087e797907ee2ad6ed72f8721daefa2')
 
 package() {
     cd "$_pkgname-$pkgver-x86_64-linux-gnu"
