@@ -9,10 +9,6 @@ on:
         description: Existing release tag to build (for example v0.2.1)
         required: true
         type: string
-  push:
-    branches: [master]
-    paths:
-      - .github/workflows/release-binary.yml
 
 permissions:
   contents: write
@@ -23,49 +19,38 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - name: Resolve ref
+      - name: Resolve release tag
         id: ref
         shell: bash
         run: |
           set -euo pipefail
           if [[ "${{ github.event_name }}" == "release" ]]; then
-            ref="${{ github.event.release.tag_name }}"
-          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            ref="${{ inputs.tag }}"
+            tag="${{ github.event.release.tag_name }}"
           else
-            ref="${GITHUB_SHA}"
+            tag="${{ inputs.tag }}"
           fi
-          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
-      - name: Check out source
+      - name: Check out tagged source
         uses: actions/checkout@v4
         with:
-          ref: ${{ steps.ref.outputs.ref }}
+          ref: ${{ steps.ref.outputs.tag }}
 
-      - name: Resolve version and release tag
+      - name: Validate version and asset name
         id: meta
         shell: bash
         run: |
           set -euo pipefail
+          tag="${{ steps.ref.outputs.tag }}"
           cargo_version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n1)"
           if [[ -z "$cargo_version" ]]; then
             echo "Could not read package version from Cargo.toml" >&2
             exit 1
           fi
-
-          if [[ "${{ github.event_name }}" == "release" ]]; then
-            tag="${{ github.event.release.tag_name }}"
-          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            tag="${{ inputs.tag }}"
-          else
-            tag="v${cargo_version}"
-          fi
-
           if [[ "$tag" != "v${cargo_version}" ]]; then
             echo "Release tag $tag does not match Cargo.toml version $cargo_version" >&2
             exit 1
           fi
-
           echo "version=$cargo_version" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "asset=educamadrid-wifi-v${cargo_version}-x86_64-linux-gnu.tar.gz" >> "$GITHUB_OUTPUT"
