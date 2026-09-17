@@ -18,7 +18,17 @@ Origen: auditoría externa del 2026-08-28 (antiguo `CHATGPT.md`) y revisión del
   `802-1x.domain-suffix-match=<nombre>`. Si es autofirmado o cambia, valorar fijar su CA con
   `802-1x.ca-cert`. Probar en varios centros antes de publicarlo: si el certificado cambia entre
   centros, la validación dejaría a gente sin conexión.
-- **Estado:** bloqueado hasta capturar el certificado en el centro.
+- **Captura (2026-09-15/17, un centro, 43 autenticaciones, siempre idéntica):**
+  - depth=0 (servidor): `CN=agile.wedu.comunidad.madrid`, O=Madrid Digital, OU=SOGEM.
+    sha256 `312de39fb52b7dd6040b7235e1b39234a7e59c4f8aeb46b18c4821226f2a7b5c`
+  - depth=1 (intermedia): `CN=CA Comunicaciones ICM (firma)`, O=Agencia de Informática y
+    Comunicaciones. sha256 `ea37c9477cf291bd2885f6d3cc556409b0df301167f414a29d4c49c64e3f227d`
+  - depth=2 (raíz): `CN=CA Comunicaciones ICM`, mismo O. sha256
+    `65125e7e91144342b55e747bca66a5323cead4f21e7220cca0d30bb69413b7cb`
+  - Es una CA **privada** de la Comunidad de Madrid: no está en el almacén del sistema y no se
+    ha encontrado publicada. El log solo trae huellas, no el certificado en sí.
+- **Estado:** falta conseguir el fichero de la CA raíz (capturándolo en el centro o pidiéndolo
+  a Madrid Digital) para fijarlo en el perfil junto con `domain-suffix-match`.
 
 ### Contraseña fuera de disco (opcional)
 - **Qué:** hoy NetworkManager guarda la contraseña en `/etc/NetworkManager/system-connections`
