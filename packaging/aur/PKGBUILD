@@ -11,7 +11,7 @@ depends=('networkmanager' 'gcc-libs' 'glibc' 'libglvnd' 'libx11' 'libxcursor' 'l
          'libxkbcommon' 'libxkbcommon-x11' 'libxrender' 'wayland')
 makedepends=('cargo')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('7ea02cc95c701861b7fb9182ff652b810cd5b93adfbfc9d6c99945a4a531defb')
+sha256sums=('4244a85e1d02ca77d5c83ed7a2d18bd12d9e0635b3c813553b6eea465d28ae5d')
 
 prepare() {
     cd "educamadrid_wifi-$pkgver"
