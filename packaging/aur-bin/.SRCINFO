@@ -19,6 +19,6 @@ pkgbase = educamadrid-wifi-bin
 	provides = educamadrid-wifi=0.2.1
 	conflicts = educamadrid-wifi
 	source = educamadrid-wifi-bin-0.2.1.tar.gz::https://github.com/13Stokes31/educamadrid_wifi/releases/download/v0.2.1/educamadrid-wifi-v0.2.1-x86_64-linux-gnu.tar.gz
-	sha256sums = __SHA256__
+	sha256sums = 0470ab789d7ddbbea3e76016a8590218b087e797907ee2ad6ed72f8721daefa2
 
 pkgname = educamadrid-wifi-bin
