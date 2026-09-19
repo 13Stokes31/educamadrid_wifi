@@ -32,9 +32,10 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Check out tagged source
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ steps.ref.outputs.tag }}
+          persist-credentials: false
 
       - name: Validate version and asset name
         id: meta
@@ -123,4 +124,27 @@ jobs:
           tag="${{ steps.meta.outputs.tag }}"
           asset="${{ steps.meta.outputs.asset }}"
           gh release view "$tag" >/dev/null
-          gh release upload "$tag" "dist/$asset" "dist/$asset.sha256" --clobber
+
+          upload_if_unchanged() {
+            local file="$1"
+            local name="${file##*/}"
+            local expected
+            local current
+            expected="sha256:$(sha256sum "$file" | cut -d' ' -f1)"
+            current="$(
+              gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" \
+                --jq ".assets[] | select(.name == \"$name\") | .digest"
+            )"
+
+            if [[ -z "$current" ]]; then
+              gh release upload "$tag" "$file"
+            elif [[ "$current" == "$expected" ]]; then
+              echo "$name ya existe con el mismo SHA-256; no se sustituye."
+            else
+              echo "$name ya existe con contenido diferente; publica una versión nueva." >&2
+              exit 1
+            fi
+          }
+
+          upload_if_unchanged "dist/$asset"
+          upload_if_unchanged "dist/$asset.sha256"

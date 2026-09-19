@@ -139,8 +139,10 @@ que habla con la red real se comprueba a mano: ver `TESTING.md`.
    - `ssh://aur@aur.archlinux.org/educamadrid-wifi.git`
    - `ssh://aur@aur.archlinux.org/educamadrid-wifi-bin.git`
 
-El workflow también admite ejecución manual indicando una etiqueta ya existente, útil si hubiera
-que regenerar los artefactos de una release sin crear una versión nueva.
+El workflow también admite ejecución manual indicando una etiqueta ya existente. La reejecución
+solo completa artefactos ausentes o acepta los que tengan exactamente el mismo SHA-256; nunca
+sustituye un artefacto publicado por contenido diferente. Si cambia el binario, hay que publicar
+una versión nueva y actualizar los paquetes AUR.
 
 ## Documentos del proyecto
 

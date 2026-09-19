@@ -325,21 +325,19 @@ fn normalizar_usuario(entrada: &str) -> Result<String, String> {
 // Perfil de conexión a{sa{sv}} (secciones → clave → valor), tal como lo describe
 // la guía oficial de EducaMadrid: WPA2-Enterprise, TTLS, fase 2 PAP y SIN validar
 // el certificado del servidor (EducaMadrid no publica CA ni dominio; ver README).
-// `login`: usuario local dueño del perfil; si se indica, ningún otro usuario del
-// equipo puede usarlo (connection.permissions).
+// `login`: usuario local dueño del perfil; ningún otro usuario del equipo puede
+// usarlo (connection.permissions).
 fn perfil<'a>(
     usuario: &'a str,
     contrasena: &'a str,
-    login: Option<&str>,
+    login: &str,
 ) -> HashMap<&'static str, HashMap<&'static str, Value<'a>>> {
     let mut p = HashMap::new();
 
     let mut s_con = HashMap::new();
     s_con.insert("id", Value::from(SSID));
     s_con.insert("type", Value::from("802-11-wireless"));
-    if let Some(login) = login {
-        s_con.insert("permissions", Value::from(vec![format!("user:{login}")]));
-    }
+    s_con.insert("permissions", Value::from(vec![format!("user:{login}")]));
     p.insert("connection", s_con);
 
     let mut s_wifi = HashMap::new();
@@ -378,7 +376,15 @@ fn connect_to_wedu(usuario: &str, contrasena: &str) -> Result<String, String> {
         .map_err(|e| format!("❌ No se pudo hablar con el sistema (D-Bus): {e}"))?;
 
     let dev = wifi_device(&conn)?;
-    let login = std::env::var("USER").ok();
+    let login = std::env::var("USER").map_err(|_| {
+        "❌ No se pudo determinar tu usuario local. Por seguridad, no se creará el perfil."
+            .to_string()
+    })?;
+    if login.is_empty() || login.contains(':') {
+        return Err(
+            "❌ El nombre de tu usuario local no es válido para NetworkManager.".to_string(),
+        );
+    }
     let raiz = ObjectPath::try_from("/").unwrap();
     let mut opciones: HashMap<&str, Value> = HashMap::new();
     opciones.insert("persist", Value::from("memory"));
@@ -389,12 +395,7 @@ fn connect_to_wedu(usuario: &str, contrasena: &str) -> Result<String, String> {
             NM_PATH,
             Some(NM),
             "AddAndActivateConnection2",
-            &(
-                perfil(usuario, contrasena, login.as_deref()),
-                &dev,
-                &raiz,
-                opciones,
-            ),
+            &(perfil(usuario, contrasena, &login), &dev, &raiz, opciones),
         )
         .map_err(|e| format!("❌ No se pudo crear la conexión: {e}"))?;
     let (nuevo, activa, _): (
@@ -607,7 +608,7 @@ mod tests {
 
     #[test]
     fn perfil_sigue_la_guia_oficial() {
-        let p = perfil("ana.lopez", "secreta", Some("ana"));
+        let p = perfil("ana.lopez", "secreta", "ana");
         assert_eq!(
             p["802-11-wireless-security"]["key-mgmt"],
             Value::from("wpa-eap")
@@ -623,11 +624,5 @@ mod tests {
             p["connection"]["permissions"],
             Value::from(vec!["user:ana".to_string()])
         );
-    }
-
-    #[test]
-    fn perfil_sin_login_no_restringe() {
-        let p = perfil("ana.lopez", "secreta", None);
-        assert!(!p["connection"].contains_key("permissions"));
     }
 }

@@ -2,7 +2,7 @@
 
 pkgname=educamadrid-wifi-bin
 _pkgname=educamadrid-wifi
-pkgver=0.2.1
+pkgver=0.2.2
 pkgrel=1
 pkgdesc="Unofficial GUI to connect to the EducaMadrid WEDU_PROF Wi-Fi network via NetworkManager (prebuilt binary)"
 arch=('x86_64')
